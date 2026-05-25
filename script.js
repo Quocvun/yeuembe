@@ -100,6 +100,52 @@ bgMusicEl.loop = true;
 bgMusicEl.volume = 0.5;
 bgMusicEl.preload = 'auto';
 
+// Try muted autoplay first (many mobile browsers allow muted autoplay)
+bgMusicEl.muted = true;
+bgMusicEl.play().then(() => {
+    console.log('Muted autoplay succeeded');
+    updateMusicButton();
+}).catch(() => {
+    console.log('Muted autoplay failed (will wait for gesture)');
+    updateMusicButton();
+});
+
+// If app is opened as PWA/standalone some platforms allow autoplay unmuted
+const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+if (isStandalone) {
+    // attempt unmuted play in standalone mode (may still be blocked)
+    bgMusicEl.muted = false;
+    bgMusicEl.play().catch(() => {
+        // fallback to muted autoplay above
+        bgMusicEl.muted = true;
+    }).finally(updateMusicButton);
+}
+
+// On first real user gesture unmute & play audible music
+function unmuteAndPlayOnGesture() {
+    try {
+        if (bgMusicEl.muted) {
+            bgMusicEl.muted = false;
+            bgMusicEl.volume = 0.5;
+        }
+        bgMusicEl.play().catch(() => {});
+    } catch (e) {
+        console.warn('unmuteAndPlayOnGesture failed', e);
+    } finally {
+        updateMusicButton();
+        // remove listeners after first successful gesture
+        document.removeEventListener('pointerdown', unmuteAndPlayOnGesture, true);
+        document.removeEventListener('touchstart', unmuteAndPlayOnGesture, true);
+        document.removeEventListener('click', unmuteAndPlayOnGesture, true);
+    }
+}
+
+// Listen to early gesture events (pointerdown is broad and fires on stylus/touch/mouse)
+document.addEventListener('pointerdown', unmuteAndPlayOnGesture, { passive: true, capture: true });
+document.addEventListener('touchstart', unmuteAndPlayOnGesture, { passive: true, capture: true });
+document.addEventListener('click', unmuteAndPlayOnGesture, { passive: true, capture: true });
+
 // UI toggle
 const musicToggle = document.getElementById('music-toggle');
 function updateMusicButton() {
