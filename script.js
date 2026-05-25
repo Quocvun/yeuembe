@@ -89,22 +89,12 @@ function getUrlParameter(name) {
 let UNLOCK_CODE = getUrlParameter("unlockCode") || "3010";
 
 // ========== BACKGROUND MUSIC ==========
-// Prefer .mp3/.m4a for broad iOS support. If your asset is .mp4, convert to .m4a/.mp3 or provide both.
-const musicUrl = getUrlParameter("music") || 'Anh Là Của Em.mp3';
+const musicUrl = getUrlParameter("music") || 'Anh Là Của Em.mp4';
 
 // Prefer the audio element (added to HTML) so iOS can play inline
 const bgMusicEl = document.getElementById('bg-music') || new Audio();
 if (musicUrl) {
-    try {
-        // update <source> if present, else set .src
-        const srcEl = document.getElementById('bg-music-src');
-        if (srcEl) {
-            srcEl.src = musicUrl;
-            if (bgMusicEl.load) bgMusicEl.load();
-        } else {
-            bgMusicEl.src = musicUrl;
-        }
-    } catch (e) { console.error('Set music src failed', e); }
+    try { bgMusicEl.src = musicUrl; } catch (e) { console.error('Set music src failed', e); }
 }
 bgMusicEl.loop = true;
 bgMusicEl.volume = 0.5;
@@ -119,58 +109,6 @@ bgMusicEl.play().then(() => {
     console.log('Muted autoplay failed (will wait for gesture)');
     updateMusicButton();
 });
-
-// Show a clear "tap to play" overlay on mobile if autoplay blocked or audio still muted
-(function ensureMobileTapOverlay() {
-    const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-    const overlay = document.getElementById('tap-to-play');
-    const btn = document.getElementById('tap-play-btn');
-
-    function showOverlay() {
-        if (!overlay) return;
-        overlay.style.display = 'flex';
-    }
-    function hideOverlay() {
-        if (!overlay) return;
-        overlay.style.display = 'none';
-    }
-
-    // If device is touch (mobile) AND audio is muted or paused, show overlay after a short delay
-    if (isTouch) {
-        // Small delay to let autoplay attempt finish
-        setTimeout(() => {
-            if (bgMusicEl.muted || bgMusicEl.paused) {
-                showOverlay();
-            }
-        }, 450);
-    }
-
-    if (btn) {
-        btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            try {
-                // Unmute and try to play audible music
-                bgMusicEl.muted = false;
-                bgMusicEl.volume = 0.5;
-                await bgMusicEl.play();
-            } catch (err) {
-                console.warn('Play after tap failed:', err);
-                // keep muted fallback if play fails
-            } finally {
-                hideOverlay();
-                updateMusicButton();
-            }
-        }, { passive: true });
-    }
-
-    // Also hide overlay if user uses the music toggle successfully
-    const checkDismiss = () => {
-        if (!overlay) return;
-        if (!bgMusicEl.muted && !bgMusicEl.paused) overlay.style.display = 'none';
-    };
-    bgMusicEl.addEventListener('play', checkDismiss);
-    bgMusicEl.addEventListener('volumechange', checkDismiss);
-})();
 
 // If app is opened as PWA/standalone some platforms allow autoplay unmuted
 const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches
@@ -219,8 +157,6 @@ if (musicToggle) {
     musicToggle.addEventListener('click', (e) => {
         e.stopPropagation();
         if (bgMusicEl.paused) {
-            // explicit user action -> unmute then play
-            try { bgMusicEl.muted = false; } catch (e) {}
             bgMusicEl.play().catch((err) => {
                 console.log('Play blocked:', err);
             }).finally(updateMusicButton);
