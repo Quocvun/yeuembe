@@ -424,11 +424,17 @@
 
     <!-- Audio for background music + mobile play/pause button -->
     <button id="music-toggle" class="music-toggle" aria-pressed="false" title="Phát/Tạm dừng nhạc">▶</button>
-    <audio id="bg-music" playsinline webkit-playsinline preload="auto" loop crossorigin="anonymous" muted></audio>
+    <!-- prefer .mp3/.m4a for iOS Safari; keep muted attribute initially -->
+    <audio id="bg-music" playsinline webkit-playsinline preload="auto" loop crossorigin="anonymous" muted>
+        <source id="bg-music-src" src="Anh Là Của Em.mp3" type="audio/mpeg">
+        <!-- fallback text -->
+        Trình duyệt của bạn không hỗ trợ thẻ audio.
+    </audio>
 
-    <!-- Tap-to-play overlay for mobile (shown until user explicitly allows sound) -->
-    <div id="tap-to-play" style="display:none; position:fixed; inset:0; background:linear-gradient(0deg, rgba(0,0,0,0.6), rgba(0,0,0,0.35)); z-index:10002; display:flex; align-items:center; justify-content:center; padding:20px;">
-        <button id="tap-play-btn" style="background:linear-gradient(135deg,#ff6b95,#ff1493); color:#fff; border:none; padding:18px 28px; border-radius:12px; font-size:18px; box-shadow:0 8px 30px rgba(0,0,0,0.3);">Chạm để bật nhạc</button>
+    <!-- Tap-to-play overlay for mobile (shown until user explicitly allows sound).
+         z-index set above shimeji-workArea (2147483643) so it's always clickable. -->
+    <div id="tap-to-play" style="display:none; position:fixed; inset:0; background:linear-gradient(0deg, rgba(0,0,0,0.6), rgba(0,0,0,0.35)); z-index:2147483645; display:flex; align-items:center; justify-content:center; padding:20px;">
+        <button id="tap-play-btn" style="background:linear-gradient(135deg,#ff6b95,#ff1493); color:#fff; border:none; padding:18px 28px; border-radius:12px; font-size:18px; box-shadow:0 8px 30px rgba(0,0,0,0.3); touch-action:manipulation;">Chạm để bật nhạc</button>
     </div>
 
     <script src="script.js"></script>
