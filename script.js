@@ -89,12 +89,22 @@ function getUrlParameter(name) {
 let UNLOCK_CODE = getUrlParameter("unlockCode") || "3010";
 
 // ========== BACKGROUND MUSIC ==========
-const musicUrl = getUrlParameter("music") || 'Anh Là Của Em.mp4';
+// Prefer .mp3/.m4a for broad iOS support. If your asset is .mp4, convert to .m4a/.mp3 or provide both.
+const musicUrl = getUrlParameter("music") || 'Anh Là Của Em.mp3';
 
 // Prefer the audio element (added to HTML) so iOS can play inline
 const bgMusicEl = document.getElementById('bg-music') || new Audio();
 if (musicUrl) {
-    try { bgMusicEl.src = musicUrl; } catch (e) { console.error('Set music src failed', e); }
+    try {
+        // update <source> if present, else set .src
+        const srcEl = document.getElementById('bg-music-src');
+        if (srcEl) {
+            srcEl.src = musicUrl;
+            if (bgMusicEl.load) bgMusicEl.load();
+        } else {
+            bgMusicEl.src = musicUrl;
+        }
+    } catch (e) { console.error('Set music src failed', e); }
 }
 bgMusicEl.loop = true;
 bgMusicEl.volume = 0.5;
@@ -209,6 +219,8 @@ if (musicToggle) {
     musicToggle.addEventListener('click', (e) => {
         e.stopPropagation();
         if (bgMusicEl.paused) {
+            // explicit user action -> unmute then play
+            try { bgMusicEl.muted = false; } catch (e) {}
             bgMusicEl.play().catch((err) => {
                 console.log('Play blocked:', err);
             }).finally(updateMusicButton);
