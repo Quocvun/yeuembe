@@ -76,7 +76,7 @@ function getUrlParameter(name) {
   if (name === "unlockCode") return "3010";
   if (name === "lockTitle") return "Ngày Chúng Mình Bên Nhau";
   if (name === "cardTitle") return "CẢM ƠN EM BÉ ĐÃ<br> BÊN CẠNH ANH 🙈💗";
-  if (name === "cardMessage") return "Đâyy là khoảng thời gian tuyệt vời nhất cuộc đời anh. Mỗi khoảnh khắc, mỗi nụ cười, mỗi cái nắm tay đều khiến anh thêm yêu em hơn. Em là nguồn sáng, là nơi bình yên của anh. Cảm ơn em đã đến bên anh và cho anh một tình yêu trọn vẹn đến như vậy. ";
+  if (name === "cardMessage") return "Đâyy là khoảng thời gian tuyệt vời nhất cuộc đời anh. Mỗi khoảnh khắc, mỗi nụ cười, mỗi cái nắm tay đều khiến anh thêm yêu em hơn. Em là nguồn sáng, là nơi bình yên của anh. Cảm ơn em đã đến bên anh và cho anh một tình yêu trọn vẹn đến như vậy 👉🏻🤭👈🏻";
   if (name === "scratchText") return "Cào để xem những điều bí mật nhé.";
   if (name === "music") return "Anh Là Của Em.mp4";
   if (name === "image") return "1.jpeg,2.jpeg,3.jpeg,4.jpeg,5.jpeg";
@@ -88,42 +88,103 @@ function getUrlParameter(name) {
 // Set your unlock code here (DDMM format - e.g., "3010" for 30/10)
 let UNLOCK_CODE = getUrlParameter("unlockCode") || "3010";
 
-// ========== BACKGROUND MUSIC ==========
+// ========== BACKGROUND MUSIC - IMPROVED MOBILE SUPPORT ==========
 const musicUrl = getUrlParameter("music") || 'Anh Là Của Em.mp4';
-const bgMusic = new Audio(musicUrl);
+const bgMusic = new Audio();
+bgMusic.src = musicUrl;
 bgMusic.loop = true;
 bgMusic.volume = 0.5;
 
-// Try to autoplay
-const playMusic = () => {
-    bgMusic.play().catch(() => {
-        // Autoplay blocked, will try on user interaction
-        console.log('Autoplay blocked - waiting for user interaction');
-    });
+// For iOS compatibility - allow low volume autoplay
+bgMusic.style = {
+  display: 'none'
+};
+
+// Detect device type
+const isMobileDevice = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
+// Enhanced music playback handler
+let musicStarted = false;
+let musicAttempts = 0;
+const maxAttempts = 5;
+
+const playMusicSafely = async () => {
+  if (musicStarted || musicAttempts >= maxAttempts) return;
+  
+  musicAttempts++;
+  
+  try {
+    // Set up audio context for iOS
+    if (isMobileDevice()) {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+        console.log('📱 Audio context resumed for mobile');
+      }
+    }
+    
+    // Attempt to play with promise
+    const playPromise = bgMusic.play();
+    if (playPromise !== undefined) {
+      await playPromise;
+      musicStarted = true;
+      console.log('🎵 Music started successfully');
+      musicAttempts = maxAttempts; // Stop retrying
+      removeUserInteractionListeners();
+    }
+  } catch (error) {
+    console.log(`🔇 Autoplay attempt ${musicAttempts} failed:`, error.name);
+    // Will retry on user interaction
+  }
 };
 
 // Try autoplay immediately
-playMusic();
+playMusicSafely();
 
 // Play on first user interaction if autoplay was blocked
-let musicStarted = false;
 const startMusicOnInteraction = () => {
-    if (!musicStarted) {
-        bgMusic.play().then(() => {
-            musicStarted = true;
-            // Remove listeners after music starts
-            document.removeEventListener('click', startMusicOnInteraction);
-            document.removeEventListener('touchstart', startMusicOnInteraction);
-            document.removeEventListener('keydown', startMusicOnInteraction);
-        }).catch((e) => {
-            console.log('Music play failed:', e);
-        });
-    }
+  if (!musicStarted) {
+    playMusicSafely();
+  }
 };
 
+// Remove listeners after music starts
+const removeUserInteractionListeners = () => {
+  if (musicStarted) {
+    document.removeEventListener('click', startMusicOnInteraction);
+    document.removeEventListener('touchstart', startMusicOnInteraction);
+    document.removeEventListener('keydown', startMusicOnInteraction);
+    document.removeEventListener('touchend', startMusicOnInteraction);
+  }
+};
+
+// Add various event listeners for mobile compatibility
 document.addEventListener('click', startMusicOnInteraction);
 document.addEventListener('touchstart', startMusicOnInteraction);
+document.addEventListener('touchend', startMusicOnInteraction);
 document.addEventListener('keydown', startMusicOnInteraction);
+
+// Resume audio context on page visibility change
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    // Page hidden - pause music to save battery
+    if (!bgMusic.paused) {
+      bgMusic.pause();
+    }
+  } else {
+    // Page visible - resume music
+    if (musicStarted && bgMusic.paused) {
+      playMusicSafely();
+    }
+  }
+});
+
+// Pause music on page unload
+window.addEventListener('beforeunload', () => {
+  bgMusic.pause();
+});
 
 // ========== IMAGE ZOOM MODAL FUNCTIONS ==========
 const modal = document.getElementById('image-modal');
@@ -511,7 +572,7 @@ function applyApiSettings(settings) {
         try {
             bgMusic.src = settings.music;
             bgMusic.load();
-            bgMusic.play().catch(() => {});
+            playMusicSafely();
         } catch (e) {
             console.error('Lỗi cập nhật nhạc:', e);
         }
@@ -611,4 +672,3 @@ if (cfgId) {
 
 // ========== FLOATING HEARTS - Pure CSS Animation ==========
 // Hearts are now rendered with pure CSS - no JavaScript needed!
-
